@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarg · Feed</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <nav class="glass-nav">
+        <div class="nav-brand">Swarg Social</div>
+        <div class="nav-links">
+            <a href="dashboard.html" class="active">Feed</a>
+            <a href="chat.html">Chat</a>
+            <a href="group.html">Groups</a>
+            <a href="#" id="profileBtn">Profile</a>
+            <button id="logoutBtn" class="glass-btn small">Logout</button>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <aside class="glass-card profile-summary" id="profileSummary">
+            <!-- dynamic profile -->
+        </aside>
+
+        <section class="feed">
+            <div class="glass-card post-creator">
+                <textarea id="postContent" placeholder="What's on your mind?"></textarea>
+                <div class="post-actions">
+                    <input type="file" id="postMedia" accept="image/*,video/*,audio/*">
+                    <button id="submitPost" class="glass-btn primary">Post</button>
+                </div>
+            </div>
+            <div id="postsContainer"></div>
+        </section>
+
+        <aside class="glass-card trending">
+            <h3>Trending</h3>
+            <div id="trendingList"></div>
+        </aside>
+    </main>
+
+    <script type="module">
+        import { supabase } from './supabase-config.js';
+        import { getCurrentUser, signOut, loadProfile, renderPost, initRealtimeFeed } from './app.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await getCurrentUser();
+            if (!user) window.location.href = 'index.html';
+
+            loadProfile(user.id);
+            initRealtimeFeed();
+
+            document.getElementById('logoutBtn').addEventListener('click', async () => {
+                await signOut();
+                window.location.href = 'index.html';
+            });
+
+            // post creation
+            document.getElementById('submitPost').addEventListener('click', async () => {
+                const content = document.getElementById('postContent').value;
+                const file = document.getElementById('postMedia').files[0];
+                let mediaUrl = null;
+                if (file) {
+                    const { data, error } = await supabase.storage
+                        .from('posts')
+                        .upload(`public/${Date.now()}_${file.name}`, file);
+                    if (error) alert(error.message);
+                    else mediaUrl = data.path;
+                }
+                const { error } = await supabase.from('posts').insert({
+                    user_id: user.id,
+                    content,
+                    media_url: mediaUrl,
+                    media_type: file?.type.split('/')[0] || null
+                });
+                if (error) alert(error.message);
+                document.getElementById('postContent').value = '';
+                document.getElementById('postMedia').value = '';
+            });
+        });
+    </script>
+</body>
+              </html>
