@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarg · Groups</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="glass-nav">
+        <div class="nav-brand">Swarg Social</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Feed</a>
+            <a href="chat.html">Chat</a>
+            <a href="group.html" class="active">Groups</a>
+            <a href="#" id="profileBtn">Profile</a>
+            <button id="logoutBtn" class="glass-btn small">Logout</button>
+        </div>
+    </nav>
+
+    <main class="groups-container">
+        <aside class="glass-card groups-sidebar">
+            <button id="createGroupBtn" class="glass-btn primary">+ New Group</button>
+            <div id="groupsList"></div>
+        </aside>
+
+        <section class="glass-card group-area">
+            <div id="groupHeader">Select a group</div>
+            <div id="groupMessages" class="messages"></div>
+            <div class="group-input" id="groupInputArea" style="display: none;">
+                <input type="text" id="groupMessageText" placeholder="Type a message">
+                <button id="sendGroupMessage" class="glass-btn primary">Send</button>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { supabase } from './supabase-config.js';
+        import { getCurrentUser, loadGroups, initGroupChat } from './app.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await getCurrentUser();
+            if (!user) window.location.href = 'index.html';
+
+            loadGroups();
+            initGroupChat();
+
+            document.getElementById('createGroupBtn').addEventListener('click', () => {
+                // simple prompt for group name
+                const name = prompt('Group name:');
+                if (name) createGroup(name);
+            });
+
+            async function createGroup(name) {
+                const { data, error } = await supabase
+                    .from('groups')
+                    .insert({ name, created_by: user.id })
+                    .select()
+                    .single();
+                if (error) alert(error.message);
+                else {
+                    await supabase.from('group_members').insert({ group_id: data.id, user_id: user.id, role: 'owner' });
+                    loadGroups();
+                }
+            }
+        });
+    </script>
+</body>
+              </html>
